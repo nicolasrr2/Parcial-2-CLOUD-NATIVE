@@ -26,3 +26,5 @@ Thumbs.db
 rabbitmq/.env
 
 **/target/
+
+**/e2e-*.log*

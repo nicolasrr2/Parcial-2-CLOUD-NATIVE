@@ -37,3 +37,7 @@ pedidos360:
       solicitud-aprobada: solicitud.aprobada
       solicitud-rechazada: solicitud.rechazada
       notificaciones-dead: notificaciones.dead
+    retry:
+      max-attempts: 3
+      initial-interval-ms: 250
+      multiplier: 2.0

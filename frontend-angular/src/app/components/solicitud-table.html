@@ -1,0 +1,95 @@
+<div
+  *ngIf="solicitudes.length === 0"
+  class="empty"
+>
+  No tienes solicitudes registradas.
+</div>
+
+<div
+  *ngIf="solicitudes.length > 0"
+  class="table-container"
+>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Tipo</th>
+        <th>Fechas</th>
+        <th>Motivo</th>
+        <th>Estado</th>
+        <th>Comentario</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr
+        *ngFor="let solicitud of solicitudes"
+      >
+        <td>{{ solicitud.id }}</td>
+
+        <td>{{ solicitud.tipo }}</td>
+
+        <td>
+          {{ solicitud.fechaInicio }}
+          al
+          {{ solicitud.fechaFin }}
+        </td>
+
+        <td>{{ solicitud.motivo }}</td>
+
+        <td>
+          <span
+            class="badge"
+            [ngClass]="estadoClass(solicitud.estado)"
+          >
+            {{ solicitud.estado }}
+          </span>
+        </td>
+
+        <td>
+          {{
+            solicitud.comentarioAprobador
+              || 'Sin comentario'
+          }}
+        </td>
+
+        <td>
+          <div
+            *ngIf="
+              puedeEscribir
+              && solicitud.estado === 'PENDIENTE'
+            "
+            class="actions"
+          >
+            <button
+              type="button"
+              class="small secondary"
+              (click)="edit(solicitud)"
+            >
+              Editar
+            </button>
+
+            <button
+              type="button"
+              class="small danger"
+              (click)="remove(solicitud)"
+            >
+              Eliminar
+            </button>
+          </div>
+
+          <span
+            *ngIf="
+              !puedeEscribir
+              || solicitud.estado !== 'PENDIENTE'
+            "
+            class="muted"
+          >
+            Sin acciones
+          </span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>

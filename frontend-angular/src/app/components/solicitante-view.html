@@ -1,0 +1,89 @@
+<section class="panel view">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">
+        Área solicitante
+      </p>
+
+      <h2>
+        Mis solicitudes
+      </h2>
+    </div>
+
+    <button
+      type="button"
+      class="secondary"
+      (click)="cargar()"
+      [disabled]="cargando || !puedeLeer"
+    >
+      Actualizar
+    </button>
+  </div>
+
+  <div
+    *ngIf="!puedeLeer"
+    class="alert warning"
+  >
+    Tu token no tiene el scope
+    solicitudes/read.
+  </div>
+
+  <ng-container *ngIf="puedeLeer">
+    <div
+      *ngIf="puedeEscribir"
+      class="subpanel"
+    >
+      <h3>
+        {{
+          editando
+            ? 'Editar solicitud'
+            : 'Nueva solicitud'
+        }}
+      </h3>
+
+      <app-solicitud-form
+        [initialData]="editando"
+        [submitting]="guardando"
+        (submitted)="guardar($event)"
+        (cancelled)="cancelarEdicion()"
+      />
+    </div>
+
+    <div
+      *ngIf="!puedeEscribir"
+      class="alert warning"
+    >
+      Tu token no tiene el scope
+      solicitudes/write.
+    </div>
+
+    <div
+      *ngIf="mensaje"
+      class="alert success"
+    >
+      {{ mensaje }}
+    </div>
+
+    <div
+      *ngIf="error"
+      class="alert error"
+    >
+      {{ error }}
+    </div>
+
+    <p
+      *ngIf="cargando"
+      class="muted"
+    >
+      Cargando solicitudes...
+    </p>
+
+    <app-solicitud-table
+      *ngIf="!cargando"
+      [solicitudes]="solicitudes"
+      [puedeEscribir]="puedeEscribir"
+      (editRequest)="editar($event)"
+      (removeRequest)="eliminar($event)"
+    />
+  </ng-container>
+</section>

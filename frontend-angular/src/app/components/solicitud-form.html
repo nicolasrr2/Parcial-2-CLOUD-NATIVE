@@ -1,0 +1,78 @@
+<form
+  class="solicitud-form"
+  (ngSubmit)="submit()"
+>
+  <div class="form-grid">
+    <label>
+      Tipo
+      <input
+        name="tipo"
+        [(ngModel)]="model.tipo"
+        placeholder="Ej. Vacaciones"
+        required
+      />
+    </label>
+
+    <label>
+      Fecha inicio
+      <input
+        type="date"
+        name="fechaInicio"
+        [(ngModel)]="model.fechaInicio"
+        required
+      />
+    </label>
+
+    <label>
+      Fecha fin
+      <input
+        type="date"
+        name="fechaFin"
+        [(ngModel)]="model.fechaFin"
+        required
+      />
+    </label>
+
+    <label class="wide">
+      Motivo
+      <textarea
+        name="motivo"
+        [(ngModel)]="model.motivo"
+        rows="3"
+        required
+      ></textarea>
+    </label>
+  </div>
+
+  <p
+    *ngIf="error"
+    class="form-error"
+  >
+    {{ error }}
+  </p>
+
+  <div class="actions">
+    <button
+      type="submit"
+      [disabled]="submitting"
+    >
+      {{
+        submitting
+          ? 'Guardando...'
+          : initialData
+            ? 'Guardar cambios'
+            : 'Crear solicitud'
+      }}
+    </button>
+
+    <button
+      *ngIf="initialData"
+      type="button"
+      class="secondary"
+      (click)="cancel()"
+      [disabled]="submitting"
+    >
+      Cancelar
+    </button>
+  </div>
+</form>

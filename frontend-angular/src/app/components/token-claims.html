@@ -1,0 +1,41 @@
+<details
+  *ngIf="claims"
+  class="panel security"
+>
+  <summary>
+    InformaciÃ³n de seguridad
+  </summary>
+
+  <div class="claims-grid">
+    <div>
+      <span>cognito:groups</span>
+      <strong>{{ groups }}</strong>
+    </div>
+
+    <div>
+      <span>scope</span>
+      <strong>{{ scope }}</strong>
+    </div>
+
+    <div>
+      <span>token_use</span>
+      <strong>
+        {{ claims.token_use || 'No informado' }}
+      </strong>
+    </div>
+
+    <div>
+      <span>client_id</span>
+      <strong>
+        {{ claims.client_id || 'No informado' }}
+      </strong>
+    </div>
+
+    <div class="wide">
+      <span>issuer</span>
+      <strong>
+        {{ claims.iss || 'No informado' }}
+      </strong>
+    </div>
+  </div>
+</details>

@@ -1,0 +1,178 @@
+<section class="panel view">
+  <div class="section-header">
+    <div>
+      <p class="eyebrow">
+        Área aprobador
+      </p>
+
+      <h2>
+        Solicitudes pendientes
+      </h2>
+    </div>
+
+    <button
+      type="button"
+      class="secondary"
+      (click)="cargar()"
+      [disabled]="cargando || !puedeLeer"
+    >
+      Actualizar
+    </button>
+  </div>
+
+  <div
+    *ngIf="!puedeLeer"
+    class="alert warning"
+  >
+    Tu token no tiene el scope
+    solicitudes/read.
+  </div>
+
+  <ng-container *ngIf="puedeLeer">
+    <div
+      *ngIf="mensaje"
+      class="alert success"
+    >
+      {{ mensaje }}
+    </div>
+
+    <div
+      *ngIf="error"
+      class="alert error"
+    >
+      {{ error }}
+    </div>
+
+    <div
+      *ngIf="!puedeAprobar"
+      class="alert warning"
+    >
+      Tu token no tiene el scope
+      solicitudes/approve.
+    </div>
+
+    <p
+      *ngIf="cargando"
+      class="muted"
+    >
+      Cargando solicitudes...
+    </p>
+
+    <div
+      *ngIf="
+        !cargando
+        && solicitudes.length === 0
+      "
+      class="empty"
+    >
+      No hay solicitudes pendientes.
+    </div>
+
+    <div
+      *ngIf="!cargando"
+      class="pending-list"
+    >
+      <article
+        *ngFor="let solicitud of solicitudes"
+        class="request-card"
+      >
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">
+              Solicitud #{{ solicitud.id }}
+            </p>
+
+            <h3>
+              {{ solicitud.tipo }}
+            </h3>
+          </div>
+
+          <span class="badge estado-pendiente">
+            {{ solicitud.estado }}
+          </span>
+        </div>
+
+        <dl class="detail-grid">
+          <div>
+            <dt>Solicitante</dt>
+            <dd>
+              {{
+                solicitud.creadoPorEmail
+                  || solicitud.creadoPor
+                  || 'No informado'
+              }}
+            </dd>
+          </div>
+
+          <div>
+            <dt>Fechas</dt>
+            <dd>
+              {{ solicitud.fechaInicio }}
+              al
+              {{ solicitud.fechaFin }}
+            </dd>
+          </div>
+
+          <div class="wide">
+            <dt>Motivo</dt>
+            <dd>
+              {{ solicitud.motivo }}
+            </dd>
+          </div>
+        </dl>
+
+        <label>
+          Comentario
+
+          <textarea
+            rows="3"
+            [ngModel]="comentarios[solicitud.id] || ''"
+            (ngModelChange)="
+              comentarios[solicitud.id] = $event
+            "
+            [disabled]="
+              !puedeAprobar
+              || procesando === solicitud.id
+            "
+            placeholder="Escribe el comentario de la decisión"
+          ></textarea>
+        </label>
+
+        <div class="actions">
+          <button
+            type="button"
+            (click)="
+              decidir(
+                solicitud.id,
+                'APROBADA'
+              )
+            "
+            [disabled]="
+              !puedeAprobar
+              || procesando === solicitud.id
+            "
+          >
+            Aprobar
+          </button>
+
+          <button
+            type="button"
+            class="danger"
+            (click)="
+              decidir(
+                solicitud.id,
+                'RECHAZADA'
+              )
+            "
+            [disabled]="
+              !puedeAprobar
+              || procesando === solicitud.id
+            "
+          >
+            Rechazar
+          </button>
+        </div>
+      </article>
+    </div>
+  </ng-container>
+</section>

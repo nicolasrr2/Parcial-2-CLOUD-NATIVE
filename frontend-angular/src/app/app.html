@@ -1,0 +1,129 @@
+<div class="app-shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">
+        DSY1107 · Cloud Native
+      </p>
+
+      <h1>
+        Pedidos360
+      </h1>
+
+      <p class="subtitle">
+        Gestión segura y asíncrona de solicitudes
+      </p>
+    </div>
+
+    <button
+      *ngIf="authenticated"
+      type="button"
+      class="secondary"
+      (click)="logout()"
+    >
+      Cerrar sesión
+    </button>
+  </header>
+
+  <main>
+    <div
+      *ngIf="initializing"
+      class="panel"
+    >
+      Inicializando aplicación...
+    </div>
+
+    <div
+      *ngIf="error"
+      class="alert error"
+    >
+      {{ error }}
+    </div>
+
+    <section
+      *ngIf="
+        !initializing
+        && !authenticated
+      "
+      class="panel login-panel"
+    >
+      <h2>
+        Iniciar sesión
+      </h2>
+
+      <p class="muted">
+        La autenticación se realiza mediante
+        Amazon Cognito con OAuth2 Authorization
+        Code + PKCE.
+      </p>
+
+      <button
+        type="button"
+        (click)="login()"
+      >
+        Iniciar sesión con Cognito
+      </button>
+    </section>
+
+    <ng-container
+      *ngIf="
+        !initializing
+        && authenticated
+      "
+    >
+      <section class="session-bar">
+        <div>
+          <strong>
+            Sesión autenticada
+          </strong>
+
+          <span>
+            {{
+              groups.length
+                ? groups.join(', ')
+                : 'Sin grupo asignado'
+            }}
+          </span>
+        </div>
+
+        <div>
+          <strong>
+            Scopes
+          </strong>
+
+          <span>
+            {{
+              scopes.length
+                ? scopes.join(', ')
+                : 'Sin scopes'
+            }}
+          </span>
+        </div>
+      </section>
+
+      <app-solicitante-view
+        *ngIf="showSolicitante"
+        [scopes]="scopes"
+      />
+
+      <app-aprobador-view
+        *ngIf="showAprobador"
+        [scopes]="scopes"
+      />
+
+      <div
+        *ngIf="
+          !showSolicitante
+          && !showAprobador
+        "
+        class="alert warning"
+      >
+        La sesión es válida, pero el usuario
+        no posee un grupo funcional reconocido.
+      </div>
+
+      <app-token-claims
+        [claims]="claims"
+      />
+    </ng-container>
+  </main>
+</div>

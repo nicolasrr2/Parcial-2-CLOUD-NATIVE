@@ -5,7 +5,7 @@ resource "aws_apigatewayv2_api" "api_manager" {
 
   cors_configuration {
     allow_origins = [
-      "http://localhost:5173",
+      "http://localhost:4200",
       "https://main.${aws_amplify_app.frontend.default_domain}"
     ]
     allow_methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]

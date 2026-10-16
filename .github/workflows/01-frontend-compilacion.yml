@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build-frontend:
-    name: Compilar frontend React
+    name: Compilar frontend Angular
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -33,24 +33,31 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias Angular
         run: npm ci
 
-      - name: Compilar frontend
-        env:
-          VITE_AWS_REGION: ${{ vars.AWS_REGION }}
-          VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
-          VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
-          VITE_REDIRECT_URI: ${{ vars.VITE_REDIRECT_URI }}
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
+      - name: Ejecutar pruebas Angular
+        run: npm test -- --watch=false --browsers=ChromeHeadless
+
+      - name: Compilar frontend Angular
         run: npm run build
 
-      - name: Verificar artefacto compilado
-        run: test -f dist/index.html
+      - name: Localizar salida Angular
+        run: |
+          set -euo pipefail
+          mapfile -t index_files < <(find dist -type f -name index.html -print)
+          if (( ${#index_files[@]} != 1 )); then
+            echo "Se esperaba exactamente un index.html de producción; encontrados: ${#index_files[@]}" >&2
+            printf '%s\n' "${index_files[@]}" >&2
+            exit 1
+          fi
+          output_dir="$(dirname "${index_files[0]}")"
+          echo "ANGULAR_OUTPUT_DIR=frontend/$output_dir" >> "$GITHUB_ENV"
+          echo "Salida Angular: $output_dir"
 
-      - name: Subir compilación frontend
+      - name: Subir salida de producción Angular
         uses: actions/upload-artifact@v4
         with:
           name: pedidos360-frontend-build
-          path: frontend/dist
+          path: ${{ env.ANGULAR_OUTPUT_DIR }}
           if-no-files-found: error

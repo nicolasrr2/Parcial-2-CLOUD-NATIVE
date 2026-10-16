@@ -1,6 +1,6 @@
-# FrontendAngular
+# Pedidos360 Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.40.
+Pedidos360's frontend is implemented with Angular 20 and uses a runtime configuration file at `public/config.json`.
 
 ## Development server
 
@@ -34,7 +34,7 @@ To build the project run:
 ng build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+This creates the production browser application in `dist/frontend/browser/`.
 
 ## Running unit tests
 

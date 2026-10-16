@@ -125,7 +125,7 @@ output "env_frontend" {
 VITE_AWS_REGION=us-east-1
 VITE_COGNITO_DOMAIN=https://${aws_cognito_user_pool_domain.domain.domain}.auth.us-east-1.amazoncognito.com
 VITE_COGNITO_CLIENT_ID=${aws_cognito_user_pool_client.spa.id}
-VITE_REDIRECT_URI=http://localhost:5173/
+VITE_REDIRECT_URI=http://localhost:4200/
 VITE_API_URL=${aws_apigatewayv2_api.api_manager.api_endpoint}
 EOT
 }

@@ -1,4 +1,4 @@
-# Grupo de usuarios para autenticar la aplicacion React.
+# Grupo de usuarios para autenticar la aplicacion Angular.
 resource "aws_cognito_user_pool" "pool" {
   name                = "dsy1107-romo3219801"
   username_attributes = ["email"]
@@ -71,7 +71,7 @@ resource "aws_cognito_user_pool_domain" "domain" {
 
 # Cliente publico para el navegador; no almacena un secreto.
 resource "aws_cognito_user_pool_client" "spa" {
-  name         = "spa-react"
+  name         = "spa-angular"
   user_pool_id = aws_cognito_user_pool.pool.id
 
   generate_secret                      = false
@@ -81,11 +81,11 @@ resource "aws_cognito_user_pool_client" "spa" {
   allowed_oauth_scopes                 = ["openid", "email", "profile"]
 
   callback_urls = [
-    "http://localhost:5173/",
+    "http://localhost:4200/",
     "https://main.${aws_amplify_app.frontend.default_domain}/"
   ]
   logout_urls = [
-    "http://localhost:5173/",
+    "http://localhost:4200/",
     "https://main.${aws_amplify_app.frontend.default_domain}/"
   ]
 

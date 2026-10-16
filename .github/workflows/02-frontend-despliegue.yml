@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   deploy-frontend:
-    name: Desplegar frontend en Amplify
+    name: Desplegar frontend Angular en Amplify
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -29,33 +29,58 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias Angular
         run: npm ci
 
-      - name: Compilar frontend productivo
+      - name: Generar configuración runtime
         env:
-          VITE_AWS_REGION: ${{ vars.AWS_REGION }}
           VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
           VITE_COGNITO_CLIENT_ID: ${{ vars.VITE_COGNITO_CLIENT_ID }}
           VITE_REDIRECT_URI: ${{ vars.VITE_REDIRECT_URI }}
           VITE_API_URL: ${{ vars.VITE_API_URL }}
-        run: npm run build
-
-      - name: Verificar compilación
-        run: test -f dist/index.html
-
-      - name: Crear ZIP para Amplify
-        working-directory: frontend/dist
         run: |
           set -euo pipefail
-          zip -r ../../frontend-amplify.zip .
+          jq -n \
+            --arg domain "$VITE_COGNITO_DOMAIN" \
+            --arg client "$VITE_COGNITO_CLIENT_ID" \
+            --arg redirect "$VITE_REDIRECT_URI" \
+            --arg api "$VITE_API_URL" \
+            '{
+              COGNITO_DOMAIN: $domain,
+              COGNITO_CLIENT_ID: $client,
+              REDIRECT_URI: $redirect,
+              API_URL: $api
+            }' > public/config.json
+
+      - name: Compilar frontend Angular productivo
+        run: npm run build
+
+      - name: Localizar salida de producción Angular
+        run: |
+          set -euo pipefail
+          mapfile -t index_files < <(find dist -type f -name index.html -print)
+          if (( ${#index_files[@]} != 1 )); then
+            echo "Se esperaba exactamente un index.html de producción; encontrados: ${#index_files[@]}" >&2
+            printf '%s\n' "${index_files[@]}" >&2
+            exit 1
+          fi
+          output_dir="$(dirname "${index_files[0]}")"
+          echo "ANGULAR_OUTPUT_DIR=frontend/$output_dir" >> "$GITHUB_ENV"
+          echo "Salida Angular: $output_dir"
+
+      - name: Crear ZIP para Amplify
+        working-directory: .
+        run: |
+          set -euo pipefail
+          output_dir="$GITHUB_WORKSPACE/$ANGULAR_OUTPUT_DIR"
+          (cd "$output_dir" && zip -r "$GITHUB_WORKSPACE/frontend-amplify.zip" .)
 
       - name: Verificar paquete Amplify
         working-directory: .
         run: |
           set -euo pipefail
-          unzip -l frontend-amplify.zip
-          unzip -l frontend-amplify.zip | grep -q "index.html"
+          unzip -Z1 frontend-amplify.zip
+          unzip -Z1 frontend-amplify.zip | grep -Fxq "index.html"
 
       - name: Configurar credenciales AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -129,7 +154,7 @@ jobs:
           FRONTEND_URL: ${{ vars.VITE_REDIRECT_URI }}
         run: curl --fail --silent --show-error --location --output /dev/null "$FRONTEND_URL"
 
-      - name: Mostrar resumen
+      - name: Mostrar resumen del despliegue Angular
         env:
           JOB_ID: ${{ steps.amplify-deployment.outputs.job_id }}
           FRONTEND_URL: ${{ vars.VITE_REDIRECT_URI }}

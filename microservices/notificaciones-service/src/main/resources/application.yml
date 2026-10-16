@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: pedidos360-notificaciones
+
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:}
+    address-shuffle-mode: random
+
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+
+server:
+  port: 8082
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+pedidos360:
+  messaging:
+    exchanges:
+      solicitudes: pedidos360.solicitudes.events
+      dead-letter: pedidos360.dlx
+
+    queues:
+      notificaciones: pedidos360.notificaciones.queue
+      notificaciones-dlq: pedidos360.notificaciones.dlq
+
+    routing-keys:
+      solicitud-creada: solicitud.creada
+      solicitud-aprobada: solicitud.aprobada
+      solicitud-rechazada: solicitud.rechazada
+      notificaciones-dead: notificaciones.dead

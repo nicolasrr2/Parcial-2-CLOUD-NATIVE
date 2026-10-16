@@ -22,3 +22,7 @@ backend/.env
 # OS/editor
 .DS_Store
 Thumbs.db
+
+rabbitmq/.env
+
+**/target/

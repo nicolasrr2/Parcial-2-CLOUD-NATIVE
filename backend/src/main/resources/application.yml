@@ -1,12 +1,24 @@
-spring:
+﻿spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/pedidos360}
     username: ${DB_USERNAME:pedidos360}
     password: ${DB_PASSWORD:pedidos360}
+
   jpa:
     hibernate:
       ddl-auto: update
     open-in-view: false
+
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:}
+    address-shuffle-mode: random
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+
 app:
   security:
     cognito:
@@ -21,3 +33,22 @@ management:
   endpoint:
     health:
       show-details: never
+
+pedidos360:
+  messaging:
+    exchanges:
+      solicitudes: pedidos360.solicitudes.events
+      dead-letter: pedidos360.dlx
+
+    queues:
+      notificaciones: pedidos360.notificaciones.queue
+      documentos: pedidos360.documentos.queue
+      notificaciones-dlq: pedidos360.notificaciones.dlq
+      documentos-dlq: pedidos360.documentos.dlq
+
+    routing-keys:
+      solicitud-creada: solicitud.creada
+      solicitud-aprobada: solicitud.aprobada
+      solicitud-rechazada: solicitud.rechazada
+      notificaciones-dead: notificaciones.dead
+      documentos-dead: documentos.dead

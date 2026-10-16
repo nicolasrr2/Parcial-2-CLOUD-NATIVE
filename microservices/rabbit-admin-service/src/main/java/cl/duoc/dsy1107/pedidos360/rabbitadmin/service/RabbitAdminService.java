@@ -4,12 +4,15 @@ import cl.duoc.dsy1107.pedidos360.rabbitadmin.dto.BindingRequest;
 import cl.duoc.dsy1107.pedidos360.rabbitadmin.dto.ExchangeRequest;
 import cl.duoc.dsy1107.pedidos360.rabbitadmin.dto.QueueRequest;
 import cl.duoc.dsy1107.pedidos360.rabbitadmin.exception.RabbitAdminOperationException;
+import cl.duoc.dsy1107.pedidos360.rabbitadmin.exception.RabbitResourceBusyException;
+import cl.duoc.dsy1107.pedidos360.rabbitadmin.exception.RabbitResourceNotFoundException;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.Exchange;
 import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
+import org.springframework.amqp.core.QueueInformation;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.stereotype.Service;
 
@@ -31,24 +34,8 @@ public class RabbitAdminService {
 
         try {
 
-            QueueBuilder builder =
-                    QueueBuilder
-                            .durable(request.name())
-                            .quorum();
-
-            if (hasText(request.deadLetterExchange())) {
-
-                builder.deadLetterExchange(
-                        request.deadLetterExchange()
-                );
-
-                builder.deadLetterRoutingKey(
-                        request.deadLetterRoutingKey()
-                );
-            }
-
             rabbitAdmin.declareQueue(
-                    builder.build()
+                    buildQueue(request)
             );
         }
         catch (AmqpException ex) {
@@ -61,11 +48,87 @@ public class RabbitAdminService {
         }
     }
 
+    public void updateQueue(
+            String name,
+            QueueRequest request) {
+
+        validateSameName(
+                name,
+                request.name()
+        );
+
+        QueueInformation info =
+                rabbitAdmin.getQueueInfo(name);
+
+        if (info == null) {
+
+            throw new RabbitResourceNotFoundException(
+                    "La cola " + name + " no existe"
+            );
+        }
+
+        if (
+                info.getMessageCount() > 0
+                        || info.getConsumerCount() > 0
+        ) {
+
+            throw new RabbitResourceBusyException(
+                    "La cola " + name
+                            + " debe estar vacia y sin consumidores para actualizarse"
+            );
+        }
+
+        try {
+
+            boolean deleted =
+                    rabbitAdmin.deleteQueue(name);
+
+            if (!deleted) {
+
+                throw new RabbitResourceNotFoundException(
+                        "La cola " + name + " no existe"
+                );
+            }
+
+            rabbitAdmin.declareQueue(
+                    buildQueue(request)
+            );
+        }
+        catch (
+                RabbitResourceNotFoundException
+                        | RabbitResourceBusyException ex
+        ) {
+
+            throw ex;
+        }
+        catch (AmqpException ex) {
+
+            throw new RabbitAdminOperationException(
+                    "No fue posible actualizar la cola "
+                            + name,
+                    ex
+            );
+        }
+    }
+
     public void deleteQueue(
             String name) {
 
         try {
-            rabbitAdmin.deleteQueue(name);
+
+            boolean deleted =
+                    rabbitAdmin.deleteQueue(name);
+
+            if (!deleted) {
+
+                throw new RabbitResourceNotFoundException(
+                        "La cola " + name + " no existe"
+                );
+            }
+        }
+        catch (RabbitResourceNotFoundException ex) {
+
+            throw ex;
         }
         catch (AmqpException ex) {
 
@@ -82,11 +145,8 @@ public class RabbitAdminService {
 
         try {
 
-            Exchange exchange =
-                    buildExchange(request);
-
             rabbitAdmin.declareExchange(
-                    exchange
+                    buildExchange(request)
             );
         }
         catch (AmqpException ex) {
@@ -99,11 +159,63 @@ public class RabbitAdminService {
         }
     }
 
+    public void updateExchange(
+            String name,
+            ExchangeRequest request) {
+
+        validateSameName(
+                name,
+                request.name()
+        );
+
+        try {
+
+            boolean deleted =
+                    rabbitAdmin.deleteExchange(name);
+
+            if (!deleted) {
+
+                throw new RabbitResourceNotFoundException(
+                        "El exchange " + name + " no existe"
+                );
+            }
+
+            rabbitAdmin.declareExchange(
+                    buildExchange(request)
+            );
+        }
+        catch (RabbitResourceNotFoundException ex) {
+
+            throw ex;
+        }
+        catch (AmqpException ex) {
+
+            throw new RabbitAdminOperationException(
+                    "No fue posible actualizar el exchange "
+                            + name,
+                    ex
+            );
+        }
+    }
+
     public void deleteExchange(
             String name) {
 
         try {
-            rabbitAdmin.deleteExchange(name);
+
+            boolean deleted =
+                    rabbitAdmin.deleteExchange(name);
+
+            if (!deleted) {
+
+                throw new RabbitResourceNotFoundException(
+                        "El exchange " + name + " no existe"
+                );
+            }
+        }
+        catch (RabbitResourceNotFoundException ex) {
+
+            throw ex;
         }
         catch (AmqpException ex) {
 
@@ -151,6 +263,28 @@ public class RabbitAdminService {
         }
     }
 
+    private Queue buildQueue(
+            QueueRequest request) {
+
+        QueueBuilder builder =
+                QueueBuilder
+                        .durable(request.name())
+                        .quorum();
+
+        if (hasText(request.deadLetterExchange())) {
+
+            builder.deadLetterExchange(
+                    request.deadLetterExchange()
+            );
+
+            builder.deadLetterRoutingKey(
+                    request.deadLetterRoutingKey()
+            );
+        }
+
+        return builder.build();
+    }
+
     private Exchange buildExchange(
             ExchangeRequest request) {
 
@@ -196,6 +330,18 @@ public class RabbitAdminService {
                 routingKey,
                 Map.of()
         );
+    }
+
+    private void validateSameName(
+            String pathName,
+            String bodyName) {
+
+        if (!pathName.equals(bodyName)) {
+
+            throw new IllegalArgumentException(
+                    "El nombre de la URL debe coincidir con el nombre del recurso"
+            );
+        }
     }
 
     private boolean hasText(

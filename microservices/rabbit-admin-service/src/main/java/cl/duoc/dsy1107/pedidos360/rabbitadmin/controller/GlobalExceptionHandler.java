@@ -1,6 +1,8 @@
 package cl.duoc.dsy1107.pedidos360.rabbitadmin.controller;
 
 import cl.duoc.dsy1107.pedidos360.rabbitadmin.exception.RabbitAdminOperationException;
+import cl.duoc.dsy1107.pedidos360.rabbitadmin.exception.RabbitResourceBusyException;
+import cl.duoc.dsy1107.pedidos360.rabbitadmin.exception.RabbitResourceNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -69,6 +71,30 @@ public class GlobalExceptionHandler {
         return Map.of(
                 "status", 400,
                 "error", "Bad Request",
+                "message", ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(RabbitResourceNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, Object> resourceNotFound(
+            RabbitResourceNotFoundException ex) {
+
+        return Map.of(
+                "status", 404,
+                "error", "Not Found",
+                "message", ex.getMessage()
+        );
+    }
+
+    @ExceptionHandler(RabbitResourceBusyException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> resourceBusy(
+            RabbitResourceBusyException ex) {
+
+        return Map.of(
+                "status", 409,
+                "error", "Conflict",
                 "message", ex.getMessage()
         );
     }

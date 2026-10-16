@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -46,6 +47,23 @@ public class RabbitAdminController {
         );
     }
 
+    @PutMapping("/queues/{name}")
+    public Map<String, String> updateQueue(
+            @PathVariable String name,
+            @Valid @RequestBody QueueRequest request) {
+
+        service.updateQueue(
+                name,
+                request
+        );
+
+        return response(
+                "queue",
+                name,
+                "updated"
+        );
+    }
+
     @DeleteMapping("/queues/{name}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteQueue(
@@ -76,6 +94,23 @@ public class RabbitAdminController {
                 "exchange",
                 request.name(),
                 "created"
+        );
+    }
+
+    @PutMapping("/exchanges/{name}")
+    public Map<String, String> updateExchange(
+            @PathVariable String name,
+            @Valid @RequestBody ExchangeRequest request) {
+
+        service.updateExchange(
+                name,
+                request
+        );
+
+        return response(
+                "exchange",
+                name,
+                "updated"
         );
     }
 

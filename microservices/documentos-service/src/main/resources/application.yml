@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: pedidos360-documentos
+
+  rabbitmq:
+    addresses: ${RABBITMQ_ADDRESSES:localhost:5672,localhost:5673,localhost:5674}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:}
+    address-shuffle-mode: random
+
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: 1
+
+server:
+  port: 8083
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+pedidos360:
+  messaging:
+    exchanges:
+      solicitudes: pedidos360.solicitudes.events
+      dead-letter: pedidos360.dlx
+
+    queues:
+      documentos: pedidos360.documentos.queue
+      documentos-dlq: pedidos360.documentos.dlq
+
+    routing-keys:
+      solicitud-aprobada: solicitud.aprobada
+      documentos-dead: documentos.dead
+
+    retry:
+      max-attempts: 3
+      initial-interval-ms: 250
+      multiplier: 2.0

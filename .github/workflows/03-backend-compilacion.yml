@@ -5,10 +5,16 @@ on:
     branches: [main]
     paths:
       - "backend/**"
+      - "microservices/notificaciones-service/**"
+      - "microservices/documentos-service/**"
+      - "microservices/rabbit-admin-service/**"
   pull_request:
     branches: [main]
     paths:
       - "backend/**"
+      - "microservices/notificaciones-service/**"
+      - "microservices/documentos-service/**"
+      - "microservices/rabbit-admin-service/**"
   workflow_dispatch:
 
 permissions:
@@ -16,12 +22,9 @@ permissions:
 
 jobs:
   build-backend:
-    name: Compilar backend Spring Boot
+    name: Verificar aplicaciones Java
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: backend
+    timeout-minutes: 35
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
@@ -33,10 +36,24 @@ jobs:
           java-version: "17"
           cache: maven
 
-      - name: Compilar, probar y empaquetar backend
+      - name: Verificar backend
+        working-directory: backend
+        run: mvn -B clean verify
+
+      - name: Verificar servicio de notificaciones
+        working-directory: microservices/notificaciones-service
+        run: mvn -B clean verify
+
+      - name: Verificar servicio de documentos
+        working-directory: microservices/documentos-service
+        run: mvn -B clean verify
+
+      - name: Verificar servicio Rabbit Admin
+        working-directory: microservices/rabbit-admin-service
         run: mvn -B clean verify
 
       - name: Verificar JAR generado
+        working-directory: backend
         run: test -n "$(find target -maxdepth 1 -type f -name '*.jar' -print -quit)"
 
       - name: Subir JAR del backend

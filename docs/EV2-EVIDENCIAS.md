@@ -19,7 +19,10 @@ Mapa breve de los criterios de evaluación hacia la implementación y la evidenc
 ## Nota de diseño AWS
 
 - LOCAL VERIFIED FAILOVER: el clúster RabbitMQ local de tres nodos fue verificado con un cambio de liderazgo y recuperación comprobada del mensaje.
-- AWS DEPLOYMENT DESIGN: la infraestructura planificada usa tres contenedores RabbitMQ sobre una sola instancia EC2 Amazon Linux 2023, con tolerancia a fallo de nodo/contenedor individual y sin afirmar disponibilidad ante pérdida total del host EC2.
-- No se ha validado un despliegue AWS real ni una ejecución de Terraform en esta sesión.
+- AWS, verificado el 2026-10-18: la instancia EC2 `i-08654b87974c0af16` está en `us-east-1a`. Docker quedó activo tras una recuperación manual por SSM; los tres contenedores RabbitMQ están ejecutándose y los tres pasaron `rabbitmq-diagnostics -q ping`.
+- El clúster informó `rabbit@rabbitmq-1`, `rabbit@rabbitmq-2` y `rabbit@rabbitmq-3` como Disk Nodes y Running Nodes. Se verificaron RabbitMQ 4.3.6, Erlang 27.3.4.19, ausencia de alarmas y particiones de red, y soporte `quorum_queue` habilitado.
+- Los tres nodos RabbitMQ se ejecutan en un único host EC2. Esto demuestra clustering y recuperación de nodos/procesos RabbitMQ, pero no tolerancia a la pérdida completa del host.
+- La primera ejecución de cloud-init falló antes de que Docker estuviera disponible. La evidencia disponible no determina una causa más específica. La recuperación manual por SSM funcionó.
+- Los cuatro repositorios ECR existen, pero aún no tienen imágenes. Los servicios ECS están pendientes/no saludables hasta publicar sus imágenes `:latest`; esto es esperado en esta etapa. El workflow de despliegue todavía no se ha ejecutado.
 
 No se incluyen capturas ni evidencia de despliegue cloud en este documento.

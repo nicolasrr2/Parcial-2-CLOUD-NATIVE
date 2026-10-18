@@ -83,9 +83,11 @@ En una prueba controlada y temporal de una quorum queue de tres miembros, el lí
 
 ### 6.2. AWS DEPLOYMENT DESIGN
 
-La infraestructura de AWS despliega un clúster RabbitMQ de tres contenedores sobre una sola instancia EC2 Amazon Linux 2023. Cada contenedor corre RabbitMQ 4 con su propio volumen persistente y comparte la misma red Docker, con tres puertos AMQP expuestos en la instancia (`5672`, `5673`, `5674`) y la interfaz de gestión limitada a los puertos internos de la VPC. La instancia no se documenta como tolerante a la pérdida completa del host EC2; la intención es proteger contra fallo de un nodo RabbitMQ o de un contenedor individual mientras el host siga disponible.
+La verificación de AWS del 2026-10-18 confirmó la instancia EC2 `i-08654b87974c0af16` en estado operativo en `us-east-1a` y tres contenedores RabbitMQ en ejecución sobre ese único host. Docker quedó activo después de una recuperación manual por SSM. Los tres contenedores respondieron correctamente a `rabbitmq-diagnostics -q ping`; el clúster reportó `rabbit@rabbitmq-1`, `rabbit@rabbitmq-2` y `rabbit@rabbitmq-3` como Disk Nodes y Running Nodes. La versión observada fue RabbitMQ 4.3.6 con Erlang 27.3.4.19; no había alarmas ni particiones de red y la funcionalidad `quorum_queue` estaba habilitada.
 
-Este diseño se valida únicamente en la documentación y en la estructura de infraestructura del repositorio; no se ha ejecutado un despliegue AWS real ni una validación cloud de la topología.
+La evidencia de AWS demuestra clustering y recuperación a nivel de nodo/proceso RabbitMQ. Los tres nodos comparten un solo host EC2, por lo que esto **no** proporciona tolerancia ante la pérdida completa del host.
+
+En esta etapa, los cuatro repositorios ECR existen pero todavía no contienen imágenes. Los servicios ECS existen y permanecen pendientes/no saludables mientras falten sus imágenes `:latest`; esto es esperado hasta ejecutar el workflow de despliegue. El workflow no se ejecutó como parte de esta verificación.
 
 ## 7. Rabbit Admin REST API
 

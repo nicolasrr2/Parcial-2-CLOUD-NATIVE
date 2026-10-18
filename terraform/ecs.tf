@@ -407,9 +407,29 @@ resource "aws_instance" "rabbitmq" {
     #!/bin/bash
     set -euo pipefail
 
-    dnf install -y docker
+    if ! command -v docker >/dev/null 2>&1; then
+      docker_installed=false
+      for attempt in 1 2 3; do
+        dnf clean all || echo "Warning: dnf clean all failed; retrying package installation" >&2
+        if dnf makecache --refresh && dnf install -y docker; then
+          docker_installed=true
+          break
+        fi
+        if [ "$attempt" -lt 3 ]; then
+          sleep $((attempt * 10))
+        fi
+      done
+      if [ "$docker_installed" != true ]; then
+        echo "Failed to install Docker after 3 attempts" >&2
+        exit 1
+      fi
+    fi
+
     aws --version
-    systemctl enable --now docker
+    systemctl enable docker
+    systemctl start docker
+    docker --version
+    systemctl is-active docker
     usermod -a -G docker ec2-user
 
     mkdir -p /tmp/rabbitmq
@@ -417,55 +437,71 @@ resource "aws_instance" "rabbitmq" {
     export RABBITMQ_USERNAME=$(printf '%s' "$SECRET_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["username"])')
     export RABBITMQ_PASSWORD=$(printf '%s' "$SECRET_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["password"])')
     export RABBITMQ_ERLANG_COOKIE=$(printf '%s' "$SECRET_JSON" | python3 -c 'import sys, json; print(json.load(sys.stdin)["erlang_cookie"])')
+    if [ -z "$RABBITMQ_USERNAME" ] || [ -z "$RABBITMQ_PASSWORD" ] || [ -z "$RABBITMQ_ERLANG_COOKIE" ]; then
+      echo "RabbitMQ credentials secret is missing a required field" >&2
+      exit 1
+    fi
+    unset SECRET_JSON
 
     cat > /tmp/rabbitmq/rabbitmq.conf <<EOF
-cluster_formation.peer_discovery_backend = classic_config
-cluster_formation.classic_config.nodes.1 = rabbit@rabbitmq-1
-cluster_formation.classic_config.nodes.2 = rabbit@rabbitmq-2
-cluster_formation.classic_config.nodes.3 = rabbit@rabbitmq-3
-cluster_partition_handling = autoheal
-default_user = $${RABBITMQ_USERNAME}
-default_pass = $${RABBITMQ_PASSWORD}
+listeners.tcp.default = 5672
+management.tcp.port = 15672
 loopback_users.guest = false
 EOF
 
-    docker network inspect rabbitmq_cluster >/dev/null 2>&1 || docker network create --driver bridge rabbitmq_cluster
+    docker network inspect pedidos360-rabbitmq >/dev/null 2>&1 || docker network create --driver bridge pedidos360-rabbitmq
 
     docker volume inspect rabbitmq_data_1 >/dev/null 2>&1 || docker volume create rabbitmq_data_1
     docker volume inspect rabbitmq_data_2 >/dev/null 2>&1 || docker volume create rabbitmq_data_2
     docker volume inspect rabbitmq_data_3 >/dev/null 2>&1 || docker volume create rabbitmq_data_3
 
+    rabbitmq_image="rabbitmq:4-management"
+    image_pulled=false
+    for attempt in 1 2 3; do
+      if docker pull "$rabbitmq_image"; then
+        image_pulled=true
+        break
+      fi
+      if [ "$attempt" -lt 3 ]; then
+        sleep $((attempt * 10))
+      fi
+    done
+    if [ "$image_pulled" != true ]; then
+      echo "Failed to pull $rabbitmq_image after 3 attempts" >&2
+      exit 1
+    fi
+
     docker rm -f pedidos360-rabbitmq-1 pedidos360-rabbitmq-2 pedidos360-rabbitmq-3 >/dev/null 2>&1 || true
 
     docker run -d --name pedidos360-rabbitmq-1 --hostname rabbitmq-1 --restart unless-stopped \
-      --network rabbitmq_cluster \
+      --network pedidos360-rabbitmq --network-alias rabbitmq-1 \
       -p 5672:5672 -p 15672:15672 \
       -e RABBITMQ_DEFAULT_USER="$RABBITMQ_USERNAME" \
       -e RABBITMQ_DEFAULT_PASS="$RABBITMQ_PASSWORD" \
       -e RABBITMQ_ERLANG_COOKIE="$RABBITMQ_ERLANG_COOKIE" \
       -v rabbitmq_data_1:/var/lib/rabbitmq \
       -v /tmp/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro \
-      rabbitmq:4-management
+      "$rabbitmq_image"
 
     docker run -d --name pedidos360-rabbitmq-2 --hostname rabbitmq-2 --restart unless-stopped \
-      --network rabbitmq_cluster \
+      --network pedidos360-rabbitmq --network-alias rabbitmq-2 \
       -p 5673:5672 -p 15673:15672 \
       -e RABBITMQ_DEFAULT_USER="$RABBITMQ_USERNAME" \
       -e RABBITMQ_DEFAULT_PASS="$RABBITMQ_PASSWORD" \
       -e RABBITMQ_ERLANG_COOKIE="$RABBITMQ_ERLANG_COOKIE" \
       -v rabbitmq_data_2:/var/lib/rabbitmq \
       -v /tmp/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro \
-      rabbitmq:4-management
+      "$rabbitmq_image"
 
     docker run -d --name pedidos360-rabbitmq-3 --hostname rabbitmq-3 --restart unless-stopped \
-      --network rabbitmq_cluster \
+      --network pedidos360-rabbitmq --network-alias rabbitmq-3 \
       -p 5674:5672 -p 15674:15672 \
       -e RABBITMQ_DEFAULT_USER="$RABBITMQ_USERNAME" \
       -e RABBITMQ_DEFAULT_PASS="$RABBITMQ_PASSWORD" \
       -e RABBITMQ_ERLANG_COOKIE="$RABBITMQ_ERLANG_COOKIE" \
       -v rabbitmq_data_3:/var/lib/rabbitmq \
       -v /tmp/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro \
-      rabbitmq:4-management
+      "$rabbitmq_image"
 
     for container in pedidos360-rabbitmq-1 pedidos360-rabbitmq-2 pedidos360-rabbitmq-3; do
       ready=false
@@ -482,7 +518,24 @@ EOF
       fi
     done
 
-    docker exec pedidos360-rabbitmq-1 rabbitmqctl cluster_status
+    for container in pedidos360-rabbitmq-2 pedidos360-rabbitmq-3; do
+      current_cluster=$(docker exec "$container" rabbitmqctl cluster_status)
+      if ! printf '%s' "$current_cluster" | grep -Fq 'rabbit@rabbitmq-1'; then
+        docker exec "$container" rabbitmqctl stop_app
+        docker exec "$container" rabbitmqctl reset
+        docker exec "$container" rabbitmqctl join_cluster rabbit@rabbitmq-1
+        docker exec "$container" rabbitmqctl start_app
+      fi
+    done
+
+    cluster_status=$(docker exec pedidos360-rabbitmq-1 rabbitmqctl cluster_status)
+    for node in rabbit@rabbitmq-1 rabbit@rabbitmq-2 rabbit@rabbitmq-3; do
+      if ! printf '%s' "$cluster_status" | grep -Fq "$node"; then
+        echo "RabbitMQ cluster verification failed; missing $node" >&2
+        exit 1
+      fi
+    done
+    printf '%s\n' "$cluster_status"
   EOT
 
   user_data_replace_on_change = true

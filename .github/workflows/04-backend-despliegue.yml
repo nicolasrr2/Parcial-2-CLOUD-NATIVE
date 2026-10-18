@@ -12,9 +12,9 @@ concurrency:
 
 jobs:
   deploy-backend:
-    name: Desplegar backend en ECS
+    name: Desplegar backend y microservicios en ECS
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - name: Descargar código
         uses: actions/checkout@v4
@@ -30,6 +30,14 @@ jobs:
         working-directory: backend
         run: mvn -B clean verify
 
+      - name: Compilar, probar y empaquetar microservicios
+        run: |
+          set -euo pipefail
+          for svc in microservices/notificaciones-service microservices/documentos-service microservices/rabbit-admin-service; do
+            echo "==> Compilando $svc"
+            (cd "$svc" && mvn -B clean verify)
+          done
+
       - name: Configurar credenciales AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -42,81 +50,107 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Construir imagen backend
+      - name: Construir y publicar imágenes ECR
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_SHA: ${{ github.sha }}
+          ECR_BACKEND: ${{ vars.ECR_REPOSITORY_BACKEND }}
+          ECR_NOTIFICACIONES: ${{ vars.ECR_REPOSITORY_NOTIFICACIONES }}
+          ECR_DOCUMENTOS: ${{ vars.ECR_REPOSITORY_DOCUMENTOS }}
+          ECR_RABBIT_ADMIN: ${{ vars.ECR_REPOSITORY_RABBIT_ADMIN }}
         run: |
           set -euo pipefail
-          docker build \
-            --tag "$REGISTRY/$ECR_REPOSITORY:latest" \
-            --tag "$REGISTRY/$ECR_REPOSITORY:$IMAGE_SHA" \
-            --file backend/Dockerfile \
-            backend
+          ECR_BACKEND="${ECR_BACKEND:-dsy1107-romo3219801-backend}"
+          ECR_NOTIFICACIONES="${ECR_NOTIFICACIONES:-dsy1107-romo3219801-notificaciones}"
+          ECR_DOCUMENTOS="${ECR_DOCUMENTOS:-dsy1107-romo3219801-documentos}"
+          ECR_RABBIT_ADMIN="${ECR_RABBIT_ADMIN:-dsy1107-romo3219801-rabbit-admin}"
 
-      - name: Publicar imágenes en ECR
-        env:
-          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
-          IMAGE_SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-          docker push "$REGISTRY/$ECR_REPOSITORY:latest"
-          docker push "$REGISTRY/$ECR_REPOSITORY:$IMAGE_SHA"
+          docker build --tag "$REGISTRY/$ECR_BACKEND:latest" --tag "$REGISTRY/$ECR_BACKEND:$IMAGE_SHA" --file backend/Dockerfile backend
+          docker push "$REGISTRY/$ECR_BACKEND:latest"
+          docker push "$REGISTRY/$ECR_BACKEND:$IMAGE_SHA"
+
+          docker build --tag "$REGISTRY/$ECR_NOTIFICACIONES:latest" --tag "$REGISTRY/$ECR_NOTIFICACIONES:$IMAGE_SHA" --file microservices/notificaciones-service/Dockerfile microservices/notificaciones-service
+          docker push "$REGISTRY/$ECR_NOTIFICACIONES:latest"
+          docker push "$REGISTRY/$ECR_NOTIFICACIONES:$IMAGE_SHA"
+
+          docker build --tag "$REGISTRY/$ECR_DOCUMENTOS:latest" --tag "$REGISTRY/$ECR_DOCUMENTOS:$IMAGE_SHA" --file microservices/documentos-service/Dockerfile microservices/documentos-service
+          docker push "$REGISTRY/$ECR_DOCUMENTOS:latest"
+          docker push "$REGISTRY/$ECR_DOCUMENTOS:$IMAGE_SHA"
+
+          docker build --tag "$REGISTRY/$ECR_RABBIT_ADMIN:latest" --tag "$REGISTRY/$ECR_RABBIT_ADMIN:$IMAGE_SHA" --file microservices/rabbit-admin-service/Dockerfile microservices/rabbit-admin-service
+          docker push "$REGISTRY/$ECR_RABBIT_ADMIN:latest"
+          docker push "$REGISTRY/$ECR_RABBIT_ADMIN:$IMAGE_SHA"
 
       - name: Forzar nuevo deployment ECS
         env:
           ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+          ECS_SERVICE_BACKEND: ${{ vars.ECS_SERVICE_BACKEND }}
+          ECS_SERVICE_NOTIFICACIONES: ${{ vars.ECS_SERVICE_NOTIFICACIONES }}
+          ECS_SERVICE_DOCUMENTOS: ${{ vars.ECS_SERVICE_DOCUMENTOS }}
+          ECS_SERVICE_RABBIT_ADMIN: ${{ vars.ECS_SERVICE_RABBIT_ADMIN }}
         run: |
           set -euo pipefail
-          RESPONSE=$(aws ecs update-service \
-            --cluster "$ECS_CLUSTER" \
-            --service "$ECS_SERVICE" \
-            --force-new-deployment \
-            --output json)
+          ECS_CLUSTER="${ECS_CLUSTER:-dsy1107-romo3219801-cluster}"
+          ECS_SERVICE_BACKEND="${ECS_SERVICE_BACKEND:-dsy1107-romo3219801-backend-service}"
+          ECS_SERVICE_NOTIFICACIONES="${ECS_SERVICE_NOTIFICACIONES:-dsy1107-romo3219801-notificaciones-service}"
+          ECS_SERVICE_DOCUMENTOS="${ECS_SERVICE_DOCUMENTOS:-dsy1107-romo3219801-documentos-service}"
+          ECS_SERVICE_RABBIT_ADMIN="${ECS_SERVICE_RABBIT_ADMIN:-dsy1107-romo3219801-rabbit-admin-service}"
 
-          SERVICE_STATUS=$(jq -r '.service.status // ""' <<< "$RESPONSE")
-          DESIRED_COUNT=$(jq -r '.service.desiredCount // ""' <<< "$RESPONSE")
-          RUNNING_COUNT=$(jq -r '.service.runningCount // ""' <<< "$RESPONSE")
-          PENDING_COUNT=$(jq -r '.service.pendingCount // ""' <<< "$RESPONSE")
-          TASK_DEFINITION=$(jq -r '.service.taskDefinition // ""' <<< "$RESPONSE")
-          PRIMARY_COUNT=$(jq '[.service.deployments[]? | select(.status == "PRIMARY")] | length' <<< "$RESPONSE")
-          PRIMARY_ROLLOUT=$(jq -r '[.service.deployments[]? | select(.status == "PRIMARY") | .rolloutState][0] // ""' <<< "$RESPONSE")
+          for SERVICE in "$ECS_SERVICE_BACKEND" "$ECS_SERVICE_NOTIFICACIONES" "$ECS_SERVICE_DOCUMENTOS" "$ECS_SERVICE_RABBIT_ADMIN"; do
+            echo "==> Actualizando servicio ECS: $SERVICE"
+            RESPONSE=$(aws ecs update-service \
+              --cluster "$ECS_CLUSTER" \
+              --service "$SERVICE" \
+              --force-new-deployment \
+              --output json)
 
-          echo "Estado del servicio: $SERVICE_STATUS"
-          echo "Desired: $DESIRED_COUNT"
-          echo "Running: $RUNNING_COUNT"
-          echo "Pending: $PENDING_COUNT"
-          echo "Task definition: $TASK_DEFINITION"
-          echo "Deployments PRIMARY: $PRIMARY_COUNT"
-          echo "Rollout PRIMARY: $PRIMARY_ROLLOUT"
+            SERVICE_STATUS=$(jq -r '.service.status // ""' <<< "$RESPONSE")
+            DESIRED_COUNT=$(jq -r '.service.desiredCount // ""' <<< "$RESPONSE")
+            RUNNING_COUNT=$(jq -r '.service.runningCount // ""' <<< "$RESPONSE")
+            PENDING_COUNT=$(jq -r '.service.pendingCount // ""' <<< "$RESPONSE")
+            TASK_DEFINITION=$(jq -r '.service.taskDefinition // ""' <<< "$RESPONSE")
+            PRIMARY_COUNT=$(jq '[.service.deployments[]? | select(.status == "PRIMARY")] | length' <<< "$RESPONSE")
+            PRIMARY_ROLLOUT=$(jq -r '[.service.deployments[]? | select(.status == "PRIMARY") | .rolloutState][0] // ""' <<< "$RESPONSE")
 
-          if [[ "$SERVICE_STATUS" != "ACTIVE" ]]; then
-            echo "ECS no aceptó un servicio ACTIVE"
-            exit 1
-          fi
+            echo "Estado del servicio: $SERVICE_STATUS"
+            echo "Desired: $DESIRED_COUNT"
+            echo "Running: $RUNNING_COUNT"
+            echo "Pending: $PENDING_COUNT"
+            echo "Task definition: $TASK_DEFINITION"
+            echo "Deployments PRIMARY: $PRIMARY_COUNT"
+            echo "Rollout PRIMARY: $PRIMARY_ROLLOUT"
 
-          if [[ "$PRIMARY_COUNT" -lt 1 ]]; then
-            echo "ECS no devolvió un deployment PRIMARY"
-            exit 1
-          fi
+            if [[ "$SERVICE_STATUS" != "ACTIVE" ]]; then
+              echo "ECS no aceptó un servicio ACTIVE"
+              exit 1
+            fi
 
-          if [[ "$PRIMARY_ROLLOUT" != "IN_PROGRESS" && "$PRIMARY_ROLLOUT" != "COMPLETED" ]]; then
-            echo "Rollout PRIMARY inválido: $PRIMARY_ROLLOUT"
-            exit 1
-          fi
+            if [[ "$PRIMARY_COUNT" -lt 1 ]]; then
+              echo "ECS no devolvió un deployment PRIMARY"
+              exit 1
+            fi
+
+            if [[ "$PRIMARY_ROLLOUT" != "IN_PROGRESS" && "$PRIMARY_ROLLOUT" != "COMPLETED" ]]; then
+              echo "Rollout PRIMARY inválido: $PRIMARY_ROLLOUT"
+              exit 1
+            fi
+          done
 
       - name: Mostrar resumen
         env:
           IMAGE_SHA: ${{ github.sha }}
           ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
-          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+          ECS_SERVICE_BACKEND: ${{ vars.ECS_SERVICE_BACKEND }}
+          ECS_SERVICE_NOTIFICACIONES: ${{ vars.ECS_SERVICE_NOTIFICACIONES }}
+          ECS_SERVICE_DOCUMENTOS: ${{ vars.ECS_SERVICE_DOCUMENTOS }}
+          ECS_SERVICE_RABBIT_ADMIN: ${{ vars.ECS_SERVICE_RABBIT_ADMIN }}
         run: |
           echo "Imagen publicada en ECR correctamente: $IMAGE_SHA"
           echo "Deployment solicitado y aceptado por ECS."
           echo "SHA: $GITHUB_SHA"
-          echo "Cluster: $ECS_CLUSTER"
-          echo "Service: $ECS_SERVICE"
+          echo "Cluster: ${ECS_CLUSTER:-dsy1107-romo3219801-cluster}"
+          echo "Backend service: ${ECS_SERVICE_BACKEND:-dsy1107-romo3219801-backend-service}"
+          echo "Notificaciones service: ${ECS_SERVICE_NOTIFICACIONES:-dsy1107-romo3219801-notificaciones-service}"
+          echo "Documentos service: ${ECS_SERVICE_DOCUMENTOS:-dsy1107-romo3219801-documentos-service}"
+          echo "Rabbit Admin service: ${ECS_SERVICE_RABBIT_ADMIN:-dsy1107-romo3219801-rabbit-admin-service}"
           echo "La verificación posterior de estabilidad mediante DescribeServices se omite porque AWS Academy aplica un explicit deny a ecs:DescribeServices."

@@ -75,11 +75,17 @@ El productor está en `backend/src/main/java/cl/duoc/dsy1107/pedidos360/messagin
 
 ## 6. Clúster RabbitMQ
 
+### 6.1. LOCAL VERIFIED FAILOVER
+
 `rabbitmq/docker-compose.yml` define tres nodos RabbitMQ 4 (`rabbitmq-1`, `rabbitmq-2` y `rabbitmq-3`), con volúmenes de datos independientes, healthchecks y puertos AMQP/administración separados. `rabbitmq/rabbitmq.conf` configura el descubrimiento de los tres nodos. Las colas quorum usan consenso Raft y una mayoría de sus miembros; con tres miembros, una cola puede mantener mayoría ante la pérdida de un nodo.
 
-### Failover verificado
-
 En una prueba controlada y temporal de una quorum queue de tres miembros, el líder inicial `rabbit@rabbitmq-2` se detuvo. Se eligió automáticamente `rabbit@rabbitmq-3`; los nodos 1 y 3 mantuvieron quorum y el mensaje siguió disponible. Después se reinició el nodo 2, volvió a estar saludable y el clúster quedó nuevamente con tres nodos. El mensaje continuó disponible y la cola temporal se eliminó al finalizar la prueba. Esta evidencia corresponde a una cola temporal de prueba, no a una intervención sobre colas de producción.
+
+### 6.2. AWS DEPLOYMENT DESIGN
+
+La infraestructura de AWS despliega un clúster RabbitMQ de tres contenedores sobre una sola instancia EC2 Amazon Linux 2023. Cada contenedor corre RabbitMQ 4 con su propio volumen persistente y comparte la misma red Docker, con tres puertos AMQP expuestos en la instancia (`5672`, `5673`, `5674`) y la interfaz de gestión limitada a los puertos internos de la VPC. La instancia no se documenta como tolerante a la pérdida completa del host EC2; la intención es proteger contra fallo de un nodo RabbitMQ o de un contenedor individual mientras el host siga disponible.
+
+Este diseño se valida únicamente en la documentación y en la estructura de infraestructura del repositorio; no se ha ejecutado un despliegue AWS real ni una validación cloud de la topología.
 
 ## 7. Rabbit Admin REST API
 

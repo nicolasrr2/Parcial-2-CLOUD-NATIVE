@@ -16,4 +16,10 @@ Mapa breve de los criterios de evaluación hacia la implementación y la evidenc
 | Pruebas automatizadas | Backend, tres microservicios y frontend | `backend/src/test/`; `microservices/*/src/test/`; `frontend/src/app/**/*.spec.ts` | Ejecución local registrada en el README raíz; workflow Java ejecuta `mvn -B clean verify` para las cuatro apps |
 | Failover quorum de tres nodos | Clúster RabbitMQ de tres nodos con quorum queues | `rabbitmq/docker-compose.yml`; `rabbitmq/rabbitmq.conf`; `backend/src/main/java/cl/duoc/dsy1107/pedidos360/messaging/config/RabbitTopologyConfig.java` | Prueba controlada documentada en la sección «Failover verificado» del README raíz; líder migró de nodo 2 a nodo 3 y el mensaje se conservó |
 
+## Nota de diseño AWS
+
+- LOCAL VERIFIED FAILOVER: el clúster RabbitMQ local de tres nodos fue verificado con un cambio de liderazgo y recuperación comprobada del mensaje.
+- AWS DEPLOYMENT DESIGN: la infraestructura planificada usa tres contenedores RabbitMQ sobre una sola instancia EC2 Amazon Linux 2023, con tolerancia a fallo de nodo/contenedor individual y sin afirmar disponibilidad ante pérdida total del host EC2.
+- No se ha validado un despliegue AWS real ni una ejecución de Terraform en esta sesión.
+
 No se incluyen capturas ni evidencia de despliegue cloud en este documento.

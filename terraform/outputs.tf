@@ -48,6 +48,36 @@ output "ecr_backend_repository_name" {
   value       = aws_ecr_repository.backend.name
 }
 
+output "ecr_notificaciones_repository_url" {
+  description = "URL del repositorio ECR del microservicio de notificaciones"
+  value       = aws_ecr_repository.notificaciones.repository_url
+}
+
+output "ecr_notificaciones_repository_name" {
+  description = "Nombre del repositorio ECR del microservicio de notificaciones"
+  value       = aws_ecr_repository.notificaciones.name
+}
+
+output "ecr_documentos_repository_url" {
+  description = "URL del repositorio ECR del microservicio de documentos"
+  value       = aws_ecr_repository.documentos.repository_url
+}
+
+output "ecr_documentos_repository_name" {
+  description = "Nombre del repositorio ECR del microservicio de documentos"
+  value       = aws_ecr_repository.documentos.name
+}
+
+output "ecr_rabbit_admin_repository_url" {
+  description = "URL del repositorio ECR del servicio Rabbit Admin"
+  value       = aws_ecr_repository.rabbit_admin.repository_url
+}
+
+output "ecr_rabbit_admin_repository_name" {
+  description = "Nombre del repositorio ECR del servicio Rabbit Admin"
+  value       = aws_ecr_repository.rabbit_admin.name
+}
+
 output "rds_endpoint" {
   value = aws_db_instance.postgres.address
 }
@@ -80,8 +110,35 @@ output "ecs_service_name" {
   value = aws_ecs_service.backend.name
 }
 
+output "ecs_notificaciones_service_name" {
+  value = aws_ecs_service.notificaciones.name
+}
+
+output "ecs_documentos_service_name" {
+  value = aws_ecs_service.documentos.name
+}
+
+output "ecs_rabbit_admin_service_name" {
+  value = aws_ecs_service.rabbit_admin.name
+}
+
 output "ecs_task_definition_arn" {
   value = aws_ecs_task_definition.backend.arn
+}
+
+output "rabbitmq_instance_id" {
+  description = "ID de la instancia EC2 que aloja el clúster RabbitMQ"
+  value       = aws_instance.rabbitmq.id
+}
+
+output "rabbitmq_private_ip" {
+  description = "Dirección privada de la instancia EC2 RabbitMQ"
+  value       = aws_instance.rabbitmq.private_ip
+}
+
+output "rabbitmq_security_group_id" {
+  description = "Security Group de la instancia RabbitMQ"
+  value       = aws_security_group.rabbitmq.id
 }
 
 output "alb_internal_dns" {

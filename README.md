@@ -83,11 +83,24 @@ En una prueba controlada y temporal de una quorum queue de tres miembros, el lí
 
 ### 6.2. AWS DEPLOYMENT DESIGN
 
-La verificación de AWS del 2026-10-18 confirmó la instancia EC2 `i-08654b87974c0af16` en estado operativo en `us-east-1a` y tres contenedores RabbitMQ en ejecución sobre ese único host. Docker quedó activo después de una recuperación manual por SSM. Los tres contenedores respondieron correctamente a `rabbitmq-diagnostics -q ping`; el clúster reportó `rabbit@rabbitmq-1`, `rabbit@rabbitmq-2` y `rabbit@rabbitmq-3` como Disk Nodes y Running Nodes. La versión observada fue RabbitMQ 4.3.6 con Erlang 27.3.4.19; no había alarmas ni particiones de red y la funcionalidad `quorum_queue` estaba habilitada.
+La verificación de AWS del 2026-10-18 confirmó la instancia EC2 `i-08654b87974c0af16` en `us-east-1a` y tres contenedores RabbitMQ en ejecución sobre ese único host. Docker quedó activo tras una recuperación manual por SSM. Los tres contenedores respondieron a `rabbitmq-diagnostics -q ping`; `rabbit@rabbitmq-1`, `rabbit@rabbitmq-2` y `rabbit@rabbitmq-3` estaban registrados como Disk Nodes y Running Nodes. Se observó RabbitMQ 4.3.6 con Erlang 27.3.4.19, sin alarmas ni particiones de red y con `quorum_queue` habilitado.
 
-La evidencia de AWS demuestra clustering y recuperación a nivel de nodo/proceso RabbitMQ. Los tres nodos comparten un solo host EC2, por lo que esto **no** proporciona tolerancia ante la pérdida completa del host.
+Los tres nodos RabbitMQ están en una sola instancia EC2. Esto verifica clustering y recuperación a nivel de nodo/proceso; **no** da alta disponibilidad ante la pérdida completa del host EC2.
 
-En esta etapa, los cuatro repositorios ECR existen pero todavía no contienen imágenes. Los servicios ECS existen y permanecen pendientes/no saludables mientras falten sus imágenes `:latest`; esto es esperado hasta ejecutar el workflow de despliegue. El workflow no se ejecutó como parte de esta verificación.
+### 6.3. AWS VERIFIED END-TO-END
+
+El 2026-10-18 se verificó el flujo cloud completo con la solicitud `#1` (`PERMISO EV2`, motivo `Prueba E2E RabbitMQ`), desde estado inicial `PENDIENTE` hasta estado final `APROBADA`. El backend publicó `solicitud.creada` y `solicitud.aprobada`; Notificaciones procesó ambos eventos y confirmó cada uno con ACK. Documentos procesó la aprobación, generó el documento y confirmó el evento con ACK. El E2E cloud finalizó como exitoso.
+
+La primera lectura de CloudWatch mostró únicamente el evento de creación debido al tiempo de ingestión de logs. Una revalidación posterior, de solo lectura, confirmó el evento de aprobación y los ACK de todos los consumidores. Al finalizar, las cuatro colas estaban vacías:
+
+| Cola | Tipo | Mensajes | Consumidores |
+| --- | --- | ---: | ---: |
+| `pedidos360.notificaciones.queue` | quorum | 0 | 1 |
+| `pedidos360.notificaciones.dlq` | quorum | 0 | 0 |
+| `pedidos360.documentos.queue` | quorum | 0 | 1 |
+| `pedidos360.documentos.dlq` | quorum | 0 | 0 |
+
+La autenticación Cognito PKCE y los roles/scopes también se verificaron visualmente en la aplicación cloud: Solicitante (`solicitantes`, `solicitudes/read`, `solicitudes/write`) y Aprobador (`aprobadores`, `solicitudes/read`, `solicitudes/approve`). Esta evidencia de aplicación cloud es independiente de la prueba local de failover de tres nodos.
 
 ## 7. Rabbit Admin REST API
 
@@ -198,4 +211,4 @@ El repositorio conserva cuatro workflows:
 | `03-backend-compilacion.yml` | Ejecuta `clean verify` en backend y los tres microservicios Java; publica el JAR del backend |
 | `04-backend-despliegue.yml` | Workflow manual de build/publicación de imagen y actualización del servicio ECS |
 
-En esta entrega se validaron localmente las aplicaciones; no se ejecutó ningún workflow de despliegue ni se realizaron despliegues cloud.
+Los workflows 02 (frontend) y 04 (backend y microservicios) finalizaron correctamente. El frontend, el backend/ALB y los cuatro servicios ECS fueron verificados en cloud como parte del E2E del 2026-10-18. La topología RabbitMQ cloud sigue limitada a un solo host EC2 y no representa alta disponibilidad ante pérdida del host.

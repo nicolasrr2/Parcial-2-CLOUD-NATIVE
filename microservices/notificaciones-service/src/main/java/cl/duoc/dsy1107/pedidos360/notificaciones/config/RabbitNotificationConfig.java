@@ -11,6 +11,7 @@ import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 
 @Configuration
 @EnableConfigurationProperties(RabbitMessagingProperties.class)
@@ -110,7 +111,7 @@ public class RabbitNotificationConfig {
 
     @Bean
     public MessageConverter rabbitMessageConverter(
-            ObjectMapper objectMapper) {
+            @NonNull ObjectMapper objectMapper) {
 
         return new Jackson2JsonMessageConverter(objectMapper);
     }

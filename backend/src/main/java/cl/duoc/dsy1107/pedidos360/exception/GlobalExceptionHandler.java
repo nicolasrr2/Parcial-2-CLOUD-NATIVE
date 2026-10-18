@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.lang.NonNull;
 import java.time.Instant;
 import java.util.Map;
 
@@ -40,7 +41,7 @@ public class GlobalExceptionHandler {
         return respuesta(HttpStatus.NOT_FOUND, exception.getMessage());
     }
 
-    private ResponseEntity<Map<String, Object>> respuesta(HttpStatus status, String detail) {
+    private ResponseEntity<Map<String, Object>> respuesta(@NonNull HttpStatus status, String detail) {
         return ResponseEntity.status(status).body(Map.of(
                 "timestamp", Instant.now(),
                 "status", status.value(),

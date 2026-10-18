@@ -11,9 +11,11 @@ import cl.duoc.dsy1107.pedidos360.exception.SolicitudNoEncontradaException;
 import cl.duoc.dsy1107.pedidos360.messaging.producer.SolicitudEventPublisher;
 import cl.duoc.dsy1107.pedidos360.repository.SolicitudRepository;
 import org.springframework.security.core.Authentication;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -74,7 +76,7 @@ public class SolicitudService {
 
     @Transactional(readOnly = true)
     public SolicitudResponse buscar(
-            Long id,
+            @NonNull Long id,
             Authentication authentication) {
 
         Solicitud solicitud = obtener(id);
@@ -88,7 +90,7 @@ public class SolicitudService {
     }
 
     public SolicitudResponse actualizar(
-            Long id,
+            @NonNull Long id,
             SolicitudRequest request,
             String subject) {
 
@@ -110,7 +112,7 @@ public class SolicitudService {
     }
 
     public void eliminar(
-            Long id,
+            @NonNull Long id,
             String subject) {
 
         Solicitud solicitud = obtener(id);
@@ -126,7 +128,7 @@ public class SolicitudService {
     }
 
     public SolicitudResponse decidir(
-            Long id,
+            @NonNull Long id,
             DecisionRequest request) {
 
         if (request.getDecision() != EstadoSolicitud.APROBADA
@@ -159,13 +161,16 @@ public class SolicitudService {
         return SolicitudResponse.desde(solicitud);
     }
 
-    private Solicitud obtener(Long id) {
+    @NonNull
+    private Solicitud obtener(@NonNull Long id) {
 
-        return repository
-                .findById(id)
-                .orElseThrow(
-                        () -> new SolicitudNoEncontradaException(id)
-                );
+        return Objects.requireNonNull(
+                repository
+                        .findById(id)
+                        .orElseThrow(
+                                () -> new SolicitudNoEncontradaException(id)
+                        )
+        );
     }
 
     private void verificarPendiente(

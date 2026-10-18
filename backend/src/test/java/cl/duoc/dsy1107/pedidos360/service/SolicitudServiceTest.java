@@ -59,6 +59,7 @@ class SolicitudServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void crearAsignaEstadoPendienteYDatosDelToken() {
 
         when(repository.save(any(Solicitud.class)))

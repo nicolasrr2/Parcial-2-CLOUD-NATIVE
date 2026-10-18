@@ -6,6 +6,7 @@ import cl.duoc.dsy1107.pedidos360.dto.SolicitudResponse;
 import cl.duoc.dsy1107.pedidos360.service.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.NonNull;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -46,7 +47,7 @@ public class SolicitudController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_solicitudes/read')")
-    public SolicitudResponse buscar(@PathVariable Long id, Authentication authentication) {
+    public SolicitudResponse buscar(@PathVariable @NonNull Long id, Authentication authentication) {
         return service.buscar(id, authentication);
     }
 
@@ -60,7 +61,7 @@ public class SolicitudController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SOLICITANTES') and hasAuthority('SCOPE_solicitudes/write')")
-    public SolicitudResponse actualizar(@PathVariable Long id, @Valid @RequestBody SolicitudRequest request,
+    public SolicitudResponse actualizar(@PathVariable @NonNull Long id, @Valid @RequestBody SolicitudRequest request,
             Authentication authentication) {
         return service.actualizar(id, request, authentication.getName());
     }
@@ -68,13 +69,13 @@ public class SolicitudController {
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('SOLICITANTES') and hasAuthority('SCOPE_solicitudes/write')")
-    public void eliminar(@PathVariable Long id, Authentication authentication) {
+    public void eliminar(@PathVariable @NonNull Long id, Authentication authentication) {
         service.eliminar(id, authentication.getName());
     }
 
     @PatchMapping("/{id}/decision")
     @PreAuthorize("hasRole('APROBADORES') and hasAuthority('SCOPE_solicitudes/approve')")
-    public SolicitudResponse decidir(@PathVariable Long id, @Valid @RequestBody DecisionRequest request) {
+    public SolicitudResponse decidir(@PathVariable @NonNull Long id, @Valid @RequestBody DecisionRequest request) {
         return service.decidir(id, request);
     }
 }

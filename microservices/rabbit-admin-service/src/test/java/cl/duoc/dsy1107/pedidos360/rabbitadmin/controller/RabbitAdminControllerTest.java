@@ -35,7 +35,7 @@ class RabbitAdminControllerTest {
 
         mockMvc.perform(
                 post("/admin/queues")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("""
                                 {
                                   "name": "pedidos360.demo.queue",
@@ -66,7 +66,7 @@ class RabbitAdminControllerTest {
 
         mockMvc.perform(
                 post("/admin/queues")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("""
                                 {
                                   "name": "",
@@ -97,7 +97,7 @@ class RabbitAdminControllerTest {
 
         mockMvc.perform(
                 post("/admin/queues")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("""
                                 {
                                   "name": "pedidos360.demo.queue",
@@ -122,7 +122,7 @@ class RabbitAdminControllerTest {
 
         mockMvc.perform(
                 post("/admin/exchanges")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("""
                                 {
                                   "name": "pedidos360.demo.exchange",
@@ -148,7 +148,7 @@ class RabbitAdminControllerTest {
 
         mockMvc.perform(
                 post("/admin/bindings")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("""
                                 {
                                   "exchange": "pedidos360.demo.exchange",

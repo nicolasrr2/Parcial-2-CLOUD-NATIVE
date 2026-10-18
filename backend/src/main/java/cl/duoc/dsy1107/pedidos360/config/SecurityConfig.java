@@ -20,6 +20,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.lang.NonNull;
 
 @Configuration
 @EnableWebSecurity
@@ -58,7 +59,7 @@ public class SecurityConfig {
         private final JwtGrantedAuthoritiesConverter scopes = new JwtGrantedAuthoritiesConverter();
 
         @Override
-        public Collection<GrantedAuthority> convert(Jwt jwt) {
+        public Collection<GrantedAuthority> convert(@NonNull Jwt jwt) {
             Collection<GrantedAuthority> authorities = new ArrayList<>();
             authorities.addAll(scopes.convert(jwt));
             List<String> groups = jwt.getClaimAsStringList("cognito:groups");

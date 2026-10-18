@@ -17,6 +17,7 @@ import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class RabbitAdminService {
@@ -58,14 +59,13 @@ public class RabbitAdminService {
         );
 
         QueueInformation info =
-                rabbitAdmin.getQueueInfo(name);
-
-        if (info == null) {
-
-            throw new RabbitResourceNotFoundException(
-                    "La cola " + name + " no existe"
-            );
-        }
+                Optional.ofNullable(
+                        rabbitAdmin.getQueueInfo(name)
+                ).orElseThrow(
+                        () -> new RabbitResourceNotFoundException(
+                                "La cola " + name + " no existe"
+                        )
+                );
 
         if (
                 info.getMessageCount() > 0
